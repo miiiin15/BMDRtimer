@@ -1,5 +1,6 @@
 package com.example.bmdrtimer
 
+import android.media.SoundPool
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -18,10 +19,22 @@ class MainActivity : AppCompatActivity() {
         findViewById(R.id.seekBar);
     }
 
+    private val soundPol = SoundPool.Builder().build()
+
+    private var currentCountDownTimer: CountDownTimer? = null
+
+    private var tickingSoundId: Int? = null
+    private var bellSoundId: Int? = null
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        bindViews()
+        initSound()
     }
+
 
     private fun bindViews() {
         seekBar.setOnSeekBarChangeListener(
@@ -31,23 +44,37 @@ class MainActivity : AppCompatActivity() {
                     progress: Int,
                     fromUser: Boolean
                 ) {
-                    remainMinTextView.text = "%02d".format(progress);
+                    if (fromUser) updateRemainTime(progress * 60 * 1000L)
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                    TODO("Not yet implemented")
+                    currentCountDownTimer?.cancel()
+                    currentCountDownTimer = null;
                 }
 
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                    seekBar ?:return
-                    creatCountDownTimer(seekBar.progress * 60 * 1000L)
+                    seekBar ?: return;
+
+                    currentCountDownTimer = creatCountDownTimer(seekBar.progress * 60 * 1000L)
+                    currentCountDownTimer?.start()
+
+                    tickingSoundId?.let { soundId ->
+                        soundPol.play(soundId, 1F, 1F, 0, -1, 1F)
+                    }
                 }
             }
         )
     }
 
-    private fun creatCountDownTimer(initialMillis: Long): CountDownTimer {
-        return object : CountDownTimer(initialMillis, 1000L) {
+    private fun initSound() {
+        tickingSoundId = soundPol.load(this, R.raw.timer_ticking, 1)
+        bellSoundId = soundPol.load(this, R.raw.timer_bell, 1)
+
+    }
+
+
+    private fun creatCountDownTimer(initialMillis: Long) =
+        object : CountDownTimer(initialMillis, 1000L) {
             override fun onTick(millisUntilFinished: Long) {
                 updateRemainTime(millisUntilFinished)
                 updateSeekbar(millisUntilFinished)
@@ -58,17 +85,16 @@ class MainActivity : AppCompatActivity() {
                 updateSeekbar(0)
             }
         }
+
+
+    private fun updateRemainTime(remainMillis: Long) {
+        val remainSeconds = remainMillis / 1000
+
+        remainMinTextView.text = "%02d".format(remainSeconds / 60)
+        remainSecTextView.text = "%02d".format(remainSeconds % 60)
     }
 
-    private fun updateRemainTime(remainMilles: Long) {
-        val remainseconds = remainMilles / 1000
-
-        remainMinTextView.text = "%02".format(remainseconds / 60)
-        remainSecTextView.text = "%02".format(remainseconds % 60)
-
-    }
-
-    private fun updateSeekbar(remainMilles: Long) {
-        seekBar.progress = (remainMilles / 1000 / 60).toInt()
+    private fun updateSeekbar(remainMillis: Long) {
+        seekBar.progress = (remainMillis / 1000 / 60).toInt()
     }
 }
